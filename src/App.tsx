@@ -62,7 +62,7 @@ function App() {
 
   const handleSignOut = async () => {
     await signOut();
-    clearUserData(); // ログアウト時はローカル状態をクリア（再ログイン時にDBから復元）
+    // ログアウト時はローカル状態をクリア（再ログイン時にDBから復元されるためclearUserDataは不要）
     setCurrentPage('home');
   };
 

@@ -78,10 +78,30 @@ export const useUserData = (userId: string | null) => {
 
 
       if (data) {
+        console.log('[loadUserSettings] データベースから取得した生データ:', data);
+        
         // family_membersの処理
         let familyMembers = [];
-        if (Array.isArray(data.family_members) && data.family_members.length > 0) {
-          familyMembers = data.family_members.map((member: any) => ({
+        console.log('[loadUserSettings] family_members型:', typeof data.family_members, 'データ:', data.family_members);
+        
+        // family_membersがtext型なので、JSON文字列として扱う
+        let parsedFamilyMembers = [];
+        if (data.family_members) {
+          try {
+            if (typeof data.family_members === 'string') {
+              parsedFamilyMembers = JSON.parse(data.family_members);
+            } else if (Array.isArray(data.family_members)) {
+              parsedFamilyMembers = data.family_members;
+            }
+          } catch (e) {
+            console.error('[loadUserSettings] JSON parse error:', e);
+            parsedFamilyMembers = [];
+          }
+        }
+        
+        if (Array.isArray(parsedFamilyMembers) && parsedFamilyMembers.length > 0) {
+          console.log('[loadUserSettings] family_membersが存在する場合の処理');
+          familyMembers = parsedFamilyMembers.map((member: any) => ({
             ...member,
             birthDate: member.birthDate ? (() => {
               const date = new Date(member.birthDate);
@@ -89,6 +109,7 @@ export const useUserData = (userId: string | null) => {
             })() : new Date('')
           }));
         } else if (data.family_count > 0) {
+          console.log('[loadUserSettings] family_membersが空だがfamily_countがある場合、デフォルトを生成');
           // family_membersが空だがfamily_countがある場合、デフォルトを生成
           familyMembers = Array.from({ length: data.family_count }, (_, i) => ({
             id: crypto.randomUUID(),
@@ -128,13 +149,24 @@ export const useUserData = (userId: string | null) => {
     }
 
     try {
-      // family_membersをJSONに変換し、birthDateを文字列に変換
+      console.log('[saveUserSettings] 保存する設定:', settings);
+      
+      // family_membersをJSON文字列として保存（text型のため）
       const familyMembersForDB = settings.familyMembers?.map(member => ({
         ...member,
         birthDate: member.birthDate instanceof Date && !isNaN(member.birthDate.getTime()) 
           ? member.birthDate.toISOString() 
           : null
       })) || [];
+
+      // JSON文字列に変換
+      const familyMembersJSON = JSON.stringify(familyMembersForDB);
+
+      console.log('[saveUserSettings] データベース保存用データ:', {
+        family_count: settings.familyCount,
+        family_members: familyMembersJSON,
+        preferences: settings.preferences
+      });
 
 
       const { data, error } = await supabase
@@ -143,7 +175,7 @@ export const useUserData = (userId: string | null) => {
           id: userId,
           family_count: settings.familyCount,
           preferences: settings.preferences,
-          family_members: familyMembersForDB,
+          family_members: familyMembersJSON,
           health_mode: settings.healthMode,
           recipe_frequency: settings.recipeFrequency,
           updated_at: new Date().toISOString(),
@@ -155,6 +187,7 @@ export const useUserData = (userId: string | null) => {
         return;
       }
 
+      console.log('[saveUserSettings] 保存成功:', data);
       setUserSettings(settings);
     } catch (error) {
       console.error('Error saving user settings:', error);
@@ -720,7 +753,7 @@ export const useUserData = (userId: string | null) => {
     if (userId) {
       loadAllData();
     } else {
-      // ログアウト時はデータをクリアするが、再ログイン時にデータベースから復元される
+      // ログアウト時はローカル状態をリセット（DBのデータは保持される）
       clearUserData();
     }
   }, [userId]);
