@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Supabase Database Test</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+    <h1>Supabase Database Test</h1>
+    <button id="testConnection">Test Connection</button>
+    <button id="checkTables">Check Tables</button>
+    <button id="testUserProfiles">Test user_profiles Table</button>
+    <pre id="output"></pre>
+
+    <script>
+        const supabaseUrl = 'https://roeojaxovszrejfpzenz.supabase.co';
+        const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJvZW9qYXhvdnN6cmVqZnB6ZW56Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTI5MjI2MTQsImV4cCI6MjA2ODQ5ODYxNH0.tBEglghJ0iUsGsDz-rHEZuiWKDPM8q5UaUBrO5GICg8';
+        const supabase = supabase.createClient(supabaseUrl, supabaseKey);
+
+        const output = document.getElementById('output');
+        
+        function log(message) {
+            console.log(message);
+            output.textContent += JSON.stringify(message, null, 2) + '\n\n';
+        }
+
+        document.getElementById('testConnection').addEventListener('click', async () => {
+            try {
+                log('Testing connection...');
+                const { data, error } = await supabase.auth.getUser();
+                if (error) {
+                    log('Connection error: ' + error.message);
+                } else {
+                    log('Connection successful. Current user: ' + (data.user ? data.user.id : 'Not logged in'));
+                }
+            } catch (e) {
+                log('Connection exception: ' + e.message);
+            }
+        });
+
+        document.getElementById('checkTables').addEventListener('click', async () => {
+            try {
+                log('Checking if user_profiles table exists...');
+                const { data, error } = await supabase
+                    .from('user_profiles')
+                    .select('count')
+                    .limit(1);
+                
+                if (error) {
+                    log('Table check error: ' + error.message);
+                    log('Error details: ' + JSON.stringify(error, null, 2));
+                } else {
+                    log('user_profiles table exists and is accessible');
+                }
+            } catch (e) {
+                log('Table check exception: ' + e.message);
+            }
+        });
+
+        document.getElementById('testUserProfiles').addEventListener('click', async () => {
+            try {
+                log('Testing user_profiles table structure...');
+                
+                // First try to insert a test row
+                const testData = {
+                    id: '00000000-0000-0000-0000-000000000000',
+                    family_count: 2,
+                    preferences: 'test preferences',
+                    family_members: [
+                        {
+                            id: 'test-1',
+                            name: 'テスト家族1',
+                            gender: 'male',
+                            appetiteLevel: 3,
+                            birthDate: '2000-01-01T00:00:00.000Z'
+                        }
+                    ],
+                    health_mode: 'normal',
+                    recipe_frequency: { S: 2, A: 3, B: 7, C: 30 }
+                };
+
+                const { data: insertData, error: insertError } = await supabase
+                    .from('user_profiles')
+                    .upsert(testData)
+                    .select();
+
+                if (insertError) {
+                    log('Insert error: ' + insertError.message);
+                    log('Insert error details: ' + JSON.stringify(insertError, null, 2));
+                } else {
+                    log('Insert successful: ' + JSON.stringify(insertData, null, 2));
+                    
+                    // Now try to read it back
+                    const { data: selectData, error: selectError } = await supabase
+                        .from('user_profiles')
+                        .select('*')
+                        .eq('id', '00000000-0000-0000-0000-000000000000');
+
+                    if (selectError) {
+                        log('Select error: ' + selectError.message);
+                    } else {
+                        log('Select successful: ' + JSON.stringify(selectData, null, 2));
+                    }
+
+                    // Clean up test data
+                    await supabase
+                        .from('user_profiles')
+                        .delete()
+                        .eq('id', '00000000-0000-0000-0000-000000000000');
+                    log('Test data cleaned up');
+                }
+            } catch (e) {
+                log('Test exception: ' + e.message);
+            }
+        });
+    </script>
+</body>
+</html>
