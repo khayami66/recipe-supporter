@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { ChefHat, Settings, Users, Sparkles, Calendar, Clock, Heart, Zap, Bot } from 'lucide-react';
 import { FamilyMember, UserSettings } from '../types';
-import LoadingSpinner from '../components/LoadingSpinner';
+import ProgressBar from '../components/ProgressBar';
 import DifyConfigModal from '../components/DifyConfigModal';
 import { useDifyConfig } from '../hooks/useDifyConfig';
 import { testDifyConnection } from '../utils/testDifyConnection';
@@ -87,8 +87,8 @@ const HomePage: React.FC<HomePageProps> = ({ settings, onGenerateMenu, onNavigat
     
     setIsLoading(true);
     
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 2000));
+    // Simulate API call - プログレスバーの表示に合わせて時間を調整
+    await new Promise(resolve => setTimeout(resolve, 8000));
     
     const familyData: FamilyMember = {
       count: settings.familyCount,
@@ -139,11 +139,7 @@ const HomePage: React.FC<HomePageProps> = ({ settings, onGenerateMenu, onNavigat
   const dateRange = getDateRange();
 
   if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <LoadingSpinner size="lg" text="美味しいメニューを生成中..." />
-      </div>
-    );
+    return <ProgressBar text="美味しいメニューを生成中..." duration={8000} />;
   }
 
   // ヘルスモード別の設定を取得
